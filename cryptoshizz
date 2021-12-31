@@ -1,0 +1,203 @@
+function Banner {
+    $welcome = Read-Host "▒▒▒▒▒▒▐███████▌▒▒▒▒▒▒`n▒▒▒▒▒▒▐░▀░▀░▀░▌▒▒▒▒▒▒`n▒▒▒▒▒▒▐▄▄▄▄▄▄▄▌▒▒▒▒▒▒`n▄▀▀▀█▒▐░▀▀▄▀▀░▌▒█▀▀▀▄`n▌▌▌▌▐▒▄▌░▄▄▄░▐▄▒▌▐▐▐▐`nA dark figure approaches. His stare is dark and smile is bright. You hear him say,`n'Hello Traveller. Would you like to see my wares?'"
+    }
+
+function Encrypt-Decrypt-Clear {
+    
+    $script:choose_method = Read-Host "Choose Method:`n[1]:Encrypt `n[2]:Decrypt`n[3]:Key Input`n[4]:Clear ciphertext`n[5]:Clear key`n[6]:Debug`nInput"
+    }
+
+function Clear-ciphertext {
+    $script:cipher_string=''
+    }
+
+function Clear-key {
+    $script:base64_key_string=''
+    }
+
+function Retrieve-File {
+    $choose_type = Read-Host "Choose Type:`n[1]:Text `n[2]:File`nInput"
+    
+    }
+
+function Input-Key-String {
+    $script:key_string = Read-Host "Input Key:"
+    
+    $stringAsStream = [System.IO.MemoryStream]::new()
+    $writer = [System.IO.StreamWriter]::new($stringAsStream)
+    $writer.write($script:key_string)
+    $writer.Flush()
+    $stringAsStream.Position = 0
+    $converted_key_string = Get-FileHash -Algorithm SHA512 -InputStream  $stringAsStream
+
+    
+    foreach ($i in $converted_key_string.Hash.ToCharArray()){
+
+        $sub_key = $i+"13All3rl1f3"
+        
+        $stringAsStream = [System.IO.MemoryStream]::new()
+        $writer = [System.IO.StreamWriter]::new($stringAsStream)
+        $writer.write($sub_key)
+        $writer.Flush()
+        $stringAsStream.Position = 0
+        $converted_key_string2 = Get-FileHash -Algorithm SHA512 -InputStream  $stringAsStream
+        $sum_string+=$converted_key_string2.Hash   
+        
+        }
+        
+        
+    $script:base64_key_string =[Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($sum_string)) -replace "=", ""
+        
+    }
+
+function Convert-to-binary {
+    $script:ascii_bin=''
+    $cleartext = Read-Host "Cleartext Message"
+    $base64_string =[Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($cleartext))
+    $CharArray =$base64_string.ToCharArray()
+    foreach ($i in $CharArray){
+        $ascii_dec =[int][char]$i
+        $bin_string = [convert]::ToString([int32]$ascii_dec,2)
+        $script:ascii_bin+=[convert]::ToString([int32]$ascii_dec,2).PadLeft(8,'0')
+        
+        }
+    }
+
+function Get-RandomAlphanumericString {
+    [CmdletBinding()]
+    Param ([int] $length = 1)
+ 
+    Begin {}
+ 
+    Process
+    {
+        Write-Output (-join ((0x30..0x39) + ( 0x41..0x5A) + ( 0x61..0x7A) | Get-Random -Count $length  | % {$_}))
+    }
+}
+
+function Convert-binary-to-cipher {
+    $bin_array=$script:ascii_bin.ToCharArray()
+    $num = 0
+    $script:cipher_string=''
+    foreach ($i in $bin_array) {
+        
+        $bin = [convert]::ToInt32($i,10)
+        
+        if ($bin -eq 0) {
+            $alpha_num = (0x30..0x39) + ( 0x41..0x5A) + ( 0x61..0x7A)
+            $rand_num = Get-Random -Maximum 61
+            $rand_int = $alpha_num[$rand_num]
+            $rand_char = [char]$rand_int
+            if ($script:base64_key_string[$num] -eq $rand_char) {
+                $rand_num2 = ($rand_num+5)%61
+                $rand_int2 = $alpha_num[$rand_num2]
+                $rand_char = [char]$rand_int2
+                $script:cipher_string+=$rand_char
+                }
+            else {
+                $script:cipher_string+=$rand_char
+                }
+            }
+
+        if ($bin -eq 1) {
+            $script:cipher_string+=$script:base64_key_string[$num]
+            $test_string+=$script:base64_key_string[$num]
+            $num++
+
+            }
+     
+        }
+        
+        write-host $script:cipher_string
+        Set-Clipboard -Value $script:cipher_string
+
+    }
+
+    
+
+    function Decode-cipher {
+        $script:new_bin_string=''
+        $script:new_bin_array=''
+        $cipher_array = $script:cipher_string.ToCharArray()
+        $num=0
+        foreach ($i in $cipher_array) {
+            if ($i -eq $script:base64_key_string[$num]) {
+                $new_bin = '1'
+                $num++
+                $script:new_bin_string+=$new_bin
+                }
+            else {
+                $new_bin = '0' 
+                $script:new_bin_string+=$new_bin
+                }
+            
+
+            }
+        
+        
+        $script:new_bin_array = $script:new_bin_string -split '(\w{8})' | ? {$_}
+        
+        foreach ($i in $script:new_bin_array) {
+
+            $bin2char+=[char][convert]::ToInt32($i,2)
+            
+            }
+        
+        $script:decoded_string = [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String($bin2char))
+        write-host $script:decoded_string
+        }
+
+
+
+    
+
+Banner
+Encrypt-Decrypt-Clear
+while ($script:choose_method -ne "exit") {
+    
+    if ($script:choose_method -eq 1) {
+        
+        Convert-to-binary
+        clear
+        Convert-binary-to-cipher
+        
+        Read-host "`nCleartext converted to ciphertext.`nPress enter to continue"
+        clear
+        
+        }
+
+    if ($script:choose_method -eq 2) {
+        Decode-cipher
+        Read-host "Decrypted!`nPress enter to continue"
+        }
+    if ($script:choose_method -eq 3) {
+        Input-Key-String
+        }
+    if ($script:choose_method -eq 4) { 
+        Clear-ciphertext
+        }
+    if ($script:choose_method -eq 5) { 
+        Clear-key
+        Read-host "Key has been cleared"
+        }
+    if ($script:choose_method -eq 6) {
+        $choose_method = read-host "[1]:Show ciphertext`n[2]:Show key string`n[3]:Show binary string`nInput"
+        if ($choose_method -eq 1) {
+            $script:cipher_string
+            }
+        if ($choose_method -eq 2) {
+            $script:base64_key_string
+            }
+        if ($choose_method -eq 3) {
+            $script:ascii_bin
+            }
+
+        }
+
+
+
+    clear
+    Write-Host "▒▒▒▒▒▒▐███████▌▒▒▒▒▒▒`n▒▒▒▒▒▒▐░▀░▀░▀░▌▒▒▒▒▒▒`n▒▒▒▒▒▒▐▄▄▄▄▄▄▄▌▒▒▒▒▒▒`n▄▀▀▀█▒▐░▀▀▄▀▀░▌▒█▀▀▀▄`n▌▌▌▌▐▒▄▌░▄▄▄░▐▄▒▌▐▐▐▐`nA dark figure approaches. His stare is dark and smile is bright. You hear him say,`n'Hello Traveller. Would you like to see my wares?'"
+    Encrypt-Decrypt-Clear
+}
+
