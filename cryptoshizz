@@ -1,10 +1,23 @@
 function Banner {
-    $welcome = Read-Host "▒▒▒▒▒▒▐███████▌▒▒▒▒▒▒`n▒▒▒▒▒▒▐░▀░▀░▀░▌▒▒▒▒▒▒`n▒▒▒▒▒▒▐▄▄▄▄▄▄▄▌▒▒▒▒▒▒`n▄▀▀▀█▒▐░▀▀▄▀▀░▌▒█▀▀▀▄`n▌▌▌▌▐▒▄▌░▄▄▄░▐▄▒▌▐▐▐▐`nA dark figure approaches. His stare is dark and smile is bright. You hear him say,`n'Hello Traveller. Would you like to see my wares?'"
+    
+  
+    $path = 'C:\Users\' + $env:UserName+'\Desktop\'+'PS_Working'
+
+    md -Force $path
+    $script:cipher_string  | Out-File -filepath ('C:\Users\' + $env:UserName+'\Desktop\'+'PS_Working\'+'encoded.txt') -force    
+    $script:cleartext  |Out-File -filepath ('C:\Users\' + $env:UserName+'\Desktop\'+'PS_Working\'+'cleartext.txt')
+    
+    $script:choose_input=1
+    $script:choose_output=1
+    $script:choose_encoded_input = 2
+    clear
+    $welcome = Read-Host "▒▒▒▒▒▒▐███████▌▒▒▒▒▒▒`n▒▒▒▒▒▒▐░▀░▀░▀░▌▒▒▒▒▒▒`n▒▒▒▒▒▒▐▄▄▄▄▄▄▄▌▒▒▒▒▒▒`n▄▀▀▀█▒▐░▀▀▄▀▀░▌▒█▀▀▀▄`n▌▌▌▌▐▒▄▌░▄▄▄░▐▄▒▌▐▐▐▐`nA dark figure approaches. His stare is intimidating, but smile is bright yet menacing. You hear him say,`n'Hello Traveller. Would you like to see my wares?'"
     }
+
 
 function Encrypt-Decrypt-Clear {
     
-    $script:choose_method = Read-Host "Choose Method:`n[1]:Encrypt `n[2]:Decrypt`n[3]:Key Input`n[4]:Clear ciphertext`n[5]:Clear key`n[6]:Debug`nInput"
+    $script:choose_method = Read-Host "Choose Method:`n[1]:Encrypt `n[2]:Decrypt`n[3]:Key Input`n[4]:Clear ciphertext`n[5]:Clear key`n[6]:Debug`n[7]:Settings`nInput"
     }
 
 function Clear-ciphertext {
@@ -15,10 +28,66 @@ function Clear-key {
     $script:base64_key_string=''
     }
 
-function Retrieve-File {
-    $choose_type = Read-Host "Choose Type:`n[1]:Text `n[2]:File`nInput"
-    
+function Select-Settings {
+    $choose_type = Read-Host "Settings:`n[1]:Plaintext Input Type `n[2]:Decoded Output Type`n[3]:Encoded Input`n"
+    clear
+    if ($choose_type -eq 1) {
+        $script:choose_input = Read-Host "Select Input:`n[1]:From Text`n[2]:From Clipboard`n[3]:From File"
+        }
+
+    if ($choose_type -eq 2) {
+        $script:choose_output = Read-Host "Select Output:`n[1]:To Text`n[2]:To Clipboard`n[3]:To File"
+        }
+    if ($choose_type -eq 3) {
+        $script:choose_encoded_input = Read-Host "Select Output:`n[1]:From Clipboard`n[2]:From File"
+        }
     }
+
+function Input-Cleartext {
+
+    if ($script:choose_input -eq 1) {
+        $script:cleartext= Read-Host "Enter Text to be Encoded"
+    }
+    if ($script:choose_input -eq 2) {
+        Read-Host "Copy to Clipboard then press Enter"
+        $script:cleartext= Get-Clipboard
+    }
+    if ($script:choose_input -eq 3) {
+        $script:cleartext= Get-Content -Raw ('C:\Users\' + $env:UserName+'\Desktop\'+'PS_Working\'+'cleartext.txt') -force
+       
+    }
+        
+    
+}
+
+
+function Output-Decoded {
+   
+    if ($script:choose_output -eq 1) {
+        Write-Host $script:decoded_string
+    }
+    if ($script:choose_output -eq 2) {
+        Set-Clipboard -Value $script:decoded_string
+    }
+    if ($script:choose_output -eq 3) {
+        $script:decoded_string = Get-Content -Raw ('C:\Users\' + $env:UserName+'\Desktop\'+'PS_Working\'+'decoded.txt') -force
+    }
+        
+    
+}
+
+function Input-Encoded {
+   
+    if ($script:choose_encoded_input -eq 1) {
+        Read-Host "Paste from clipboard. Press Enter when content is in clipboard"
+        $script:cipher_string = Get-Clipboard
+        }
+
+        
+    if ($script:choose_encoded_input -eq 2) {
+        $script:cipher_string  = Get-Content ('C:\Users\' + $env:UserName+'\Desktop\'+'PS_Working\'+'encoded.txt') -force
+        }
+     }   
 
 function Input-Key-String {
     $script:key_string = Read-Host "Input Key:"
@@ -51,9 +120,12 @@ function Input-Key-String {
     }
 
 function Convert-to-binary {
+    
+    Input-Cleartext
+    
     $script:ascii_bin=''
-    $cleartext = Read-Host "Cleartext Message"
-    $base64_string =[Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($cleartext))
+    #$cleartext = Read-Host "Cleartext Message"
+    $base64_string =[Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($script:cleartext))
     $CharArray =$base64_string.ToCharArray()
     foreach ($i in $CharArray){
         $ascii_dec =[int][char]$i
@@ -100,24 +172,29 @@ function Convert-binary-to-cipher {
             }
 
         if ($bin -eq 1) {
-            $script:cipher_string+=$script:base64_key_string[$num]
-            $test_string+=$script:base64_key_string[$num]
+            $script:cipher_string+=$script:base64_key_string[$num%$script:base64_key_string.Length]
+            
             $num++
 
             }
-     
+
         }
         
         write-host $script:cipher_string
         Set-Clipboard -Value $script:cipher_string
+        $script:cipher_string | Out-File -filepath ('C:\Users\' + $env:UserName+'\Desktop\'+'PS_Working\'+'encoded.txt') -force
 
     }
 
     
 
     function Decode-cipher {
+        
         $script:new_bin_string=''
         $script:new_bin_array=''
+        write-host $script:cipher_string.length
+        Input-Encoded
+        write-host $script:cipher_string.length
         $cipher_array = $script:cipher_string.ToCharArray()
         $num=0
         foreach ($i in $cipher_array) {
@@ -137,14 +214,22 @@ function Convert-binary-to-cipher {
         
         $script:new_bin_array = $script:new_bin_string -split '(\w{8})' | ? {$_}
         
-        foreach ($i in $script:new_bin_array) {
+        foreach ($c in $script:new_bin_array) {
 
-            $bin2char+=[char][convert]::ToInt32($i,2)
-            
+            $bin2char+=[char][convert]::ToInt32($c,2)
+
             }
+        try {
+            $script:decoded_string = [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String($bin2char))
+            Output-Decoded
+            }
+        Catch {
+        write-host $bin2char
+        write-host `n Error
+        }
+
+        #write-host $script:decoded_string
         
-        $script:decoded_string = [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String($bin2char))
-        write-host $script:decoded_string
         }
 
 
@@ -193,11 +278,13 @@ while ($script:choose_method -ne "exit") {
             }
 
         }
+    if ($script:choose_method -eq 7) { 
+        Select-Settings
+        }
 
 
-
-    clear
-    Write-Host "▒▒▒▒▒▒▐███████▌▒▒▒▒▒▒`n▒▒▒▒▒▒▐░▀░▀░▀░▌▒▒▒▒▒▒`n▒▒▒▒▒▒▐▄▄▄▄▄▄▄▌▒▒▒▒▒▒`n▄▀▀▀█▒▐░▀▀▄▀▀░▌▒█▀▀▀▄`n▌▌▌▌▐▒▄▌░▄▄▄░▐▄▒▌▐▐▐▐`nA dark figure approaches. His stare is dark and smile is bright. You hear him say,`n'Hello Traveller. Would you like to see my wares?'"
+    
+    Write-Host "▒▒▒▒▒▒▐███████▌▒▒▒▒▒▒`n▒▒▒▒▒▒▐░▀░▀░▀░▌▒▒▒▒▒▒`n▒▒▒▒▒▒▐▄▄▄▄▄▄▄▌▒▒▒▒▒▒`n▄▀▀▀█▒▐░▀▀▄▀▀░▌▒█▀▀▀▄`n▌▌▌▌▐▒▄▌░▄▄▄░▐▄▒▌▐▐▐▐`nA dark figure approaches. His stare is intimidating and smile is bright yet menacing. You hear him say,`n'Hello Traveller. Would you like to see my wares?'"
     Encrypt-Decrypt-Clear
 }
 
